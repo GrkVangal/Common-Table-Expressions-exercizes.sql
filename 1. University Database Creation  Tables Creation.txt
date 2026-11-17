@@ -1,0 +1,173 @@
+-- =============================================================
+-- University Database - MySQL Workbench Creation Script
+-- Version: v4 realistic large dataset compatible schema
+-- Author: George Balaskas / IEK AKMI teaching material
+-- Notes:
+--   1. Run this file first in MySQL Workbench.
+--   2. Then run the insertions file.
+--   3. The schema follows the classic university database structure.
+-- =============================================================
+
+DROP DATABASE IF EXISTS university;
+CREATE DATABASE university
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+USE university;
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+DROP TABLE IF EXISTS prereq;
+DROP TABLE IF EXISTS advisor;
+DROP TABLE IF EXISTS takes;
+DROP TABLE IF EXISTS teaches;
+DROP TABLE IF EXISTS section;
+DROP TABLE IF EXISTS student;
+DROP TABLE IF EXISTS instructor;
+DROP TABLE IF EXISTS course;
+DROP TABLE IF EXISTS department;
+DROP TABLE IF EXISTS classroom;
+DROP TABLE IF EXISTS time_slot;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+CREATE TABLE classroom
+(
+    building        VARCHAR(15),
+    room_number    VARCHAR(7),
+    capacity       DECIMAL(4,0),
+    PRIMARY KEY (building, room_number)
+) ENGINE = InnoDB;
+
+CREATE TABLE department
+(
+    dept_name      VARCHAR(20),
+    building       VARCHAR(15),
+    budget         DECIMAL(12,2) CHECK (budget > 0),
+    PRIMARY KEY (dept_name)
+) ENGINE = InnoDB;
+
+CREATE TABLE course
+(
+    course_id      VARCHAR(8),
+    title          VARCHAR(50),
+    dept_name      VARCHAR(20),
+    credits        DECIMAL(2,0) CHECK (credits > 0),
+    PRIMARY KEY (course_id),
+    FOREIGN KEY (dept_name) REFERENCES department(dept_name)
+        ON DELETE SET NULL
+) ENGINE = InnoDB;
+
+CREATE TABLE instructor
+(
+    ID             VARCHAR(5),
+    name           VARCHAR(20) NOT NULL,
+    dept_name      VARCHAR(20),
+    salary         DECIMAL(8,2) CHECK (salary > 29000),
+    PRIMARY KEY (ID),
+    FOREIGN KEY (dept_name) REFERENCES department(dept_name)
+        ON DELETE SET NULL
+) ENGINE = InnoDB;
+
+CREATE TABLE section
+(
+    course_id      VARCHAR(8),
+    sec_id         VARCHAR(8),
+    semester       VARCHAR(6) CHECK (semester IN ('Fall', 'Winter', 'Spring', 'Summer')),
+    `year`         DECIMAL(4,0) CHECK (`year` > 1701 AND `year` < 2100),
+    building       VARCHAR(15),
+    room_number    VARCHAR(7),
+    time_slot_id   VARCHAR(4),
+    PRIMARY KEY (course_id, sec_id, semester, `year`),
+    FOREIGN KEY (course_id) REFERENCES course(course_id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (building, room_number) REFERENCES classroom(building, room_number)
+        ON DELETE SET NULL
+) ENGINE = InnoDB;
+
+CREATE TABLE teaches
+(
+    ID             VARCHAR(5),
+    course_id      VARCHAR(8),
+    sec_id         VARCHAR(8),
+    semester       VARCHAR(6),
+    `year`         DECIMAL(4,0),
+    PRIMARY KEY (ID, course_id, sec_id, semester, `year`),
+    FOREIGN KEY (course_id, sec_id, semester, `year`)
+        REFERENCES section(course_id, sec_id, semester, `year`)
+        ON DELETE CASCADE,
+    FOREIGN KEY (ID) REFERENCES instructor(ID)
+        ON DELETE CASCADE
+) ENGINE = InnoDB;
+
+CREATE TABLE student
+(
+    ID             VARCHAR(5),
+    name           VARCHAR(20) NOT NULL,
+    dept_name      VARCHAR(20),
+    tot_cred       DECIMAL(3,0) CHECK (tot_cred >= 0),
+    PRIMARY KEY (ID),
+    FOREIGN KEY (dept_name) REFERENCES department(dept_name)
+        ON DELETE SET NULL
+) ENGINE = InnoDB;
+
+CREATE TABLE takes
+(
+    ID             VARCHAR(5),
+    course_id      VARCHAR(8),
+    sec_id         VARCHAR(8),
+    semester       VARCHAR(6),
+    `year`         DECIMAL(4,0),
+    grade          VARCHAR(2),
+    PRIMARY KEY (ID, course_id, sec_id, semester, `year`),
+    FOREIGN KEY (course_id, sec_id, semester, `year`)
+        REFERENCES section(course_id, sec_id, semester, `year`)
+        ON DELETE CASCADE,
+    FOREIGN KEY (ID) REFERENCES student(ID)
+        ON DELETE CASCADE
+) ENGINE = InnoDB;
+
+CREATE TABLE advisor
+(
+    s_ID           VARCHAR(5),
+    i_ID           VARCHAR(5),
+    PRIMARY KEY (s_ID),
+    FOREIGN KEY (i_ID) REFERENCES instructor(ID)
+        ON DELETE SET NULL,
+    FOREIGN KEY (s_ID) REFERENCES student(ID)
+        ON DELETE CASCADE
+) ENGINE = InnoDB;
+
+CREATE TABLE time_slot
+(
+    time_slot_id   VARCHAR(4),
+    day            VARCHAR(1),
+    start_hr       DECIMAL(2) CHECK (start_hr >= 0 AND start_hr < 24),
+    start_min      DECIMAL(2) CHECK (start_min >= 0 AND start_min < 60),
+    end_hr         DECIMAL(2) CHECK (end_hr >= 0 AND end_hr < 24),
+    end_min        DECIMAL(2) CHECK (end_min >= 0 AND end_min < 60),
+    PRIMARY KEY (time_slot_id, day, start_hr, start_min)
+) ENGINE = InnoDB;
+
+CREATE TABLE prereq
+(
+    course_id      VARCHAR(8),
+    prereq_id      VARCHAR(8),
+    PRIMARY KEY (course_id, prereq_id),
+    FOREIGN KEY (course_id) REFERENCES course(course_id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (prereq_id) REFERENCES course(course_id)
+        ON DELETE CASCADE
+) ENGINE = InnoDB;
+
+-- Helpful indexes for realistic reporting and JOIN performance.
+CREATE INDEX idx_course_dept ON course(dept_name);
+CREATE INDEX idx_instructor_dept ON instructor(dept_name);
+CREATE INDEX idx_student_dept ON student(dept_name);
+CREATE INDEX idx_section_course ON section(course_id);
+CREATE INDEX idx_teaches_course_section ON teaches(course_id, sec_id, semester, `year`);
+CREATE INDEX idx_takes_student ON takes(ID);
+CREATE INDEX idx_takes_course_section ON takes(course_id, sec_id, semester, `year`);
+CREATE INDEX idx_advisor_instructor ON advisor(i_ID);
+
+-- End of schema creation script.
