@@ -1,18 +1,18 @@
-WITH advisor_counts AS (
-    SELECT
+with advisor_counts as (
+    select
         advisor.i_ID,
-        COUNT(advisor.s_ID) AS advisee_count
-    FROM advisor
-    GROUP BY advisor.i_ID
+        COUNT(advisor.s_ID) as advisee_count
+    from advisor
+    group by advisor.i_ID
 )
-SELECT
+select
     instructor.ID,
     instructor.name,
     department.building,
     advisor_counts.advisee_count
-FROM advisor_counts
-INNER JOIN instructor
-    ON instructor.ID = advisor_counts.i_ID
-INNER JOIN department
-    ON instructor.dept_name = department.dept_name
-ORDER BY advisor_counts.advisee_count DESC;
+from advisor_counts
+inner join instructor
+    on instructor.ID = advisor_counts.i_ID
+inner join department
+    on instructor.dept_name = department.dept_name
+order by advisor_counts.advisee_count desc;
